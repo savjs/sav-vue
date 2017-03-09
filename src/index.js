@@ -4,5 +4,5 @@ export const component = quickConf('component')
 export {component as com}
 
 export function vuePlugin (ctx) {
-  
+
 }
