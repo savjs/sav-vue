@@ -38,3 +38,4 @@ jspm_packages
 /dist
 /test/fixtures/TestRoutes.js
 /test/fixtures/Routes.js
+.vscode/
