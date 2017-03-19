@@ -60,11 +60,9 @@ class VueRenderer {
     let moduleRoute
     if (!this.modules[moduleName]) {
       let {vueProp, route} = module
-      let name = convertCase(vueCase, moduleName)
       moduleRoute = {
         component: convertCase(vueFileCase, `${moduleName}/${moduleName}`),
         path: route.path,
-        name,
         children: []
       }
       this.modules[moduleName] = vueProp ? Object.assign({}, moduleRoute, vueProp) : moduleRoute
