@@ -1,6 +1,6 @@
 {
   "name": "sav-vue",
-  "version": "1.0.1",
+  "version": "1.0.2",
   "description": "vueerty inject for savjs",
   "main": "dist/sav-vue.cjs.js",
   "module": "dist/sav-vue.es.js",
@@ -45,9 +45,18 @@
     "rollup-plugin-node-resolve": "^2.0.0",
     "rollup-plugin-re": "^1.0.1",
     "rollup-plugin-vue2": "^0.8.0",
-    "sav-router": "^1.0.12",
+    "sav-router": "^1.0.15",
     "standard": "^9.0.1",
     "watch-cli": "^0.2.1"
+  },
+  "dependencies": {
+    "bluebird": "^3.5.0",
+    "sav-decorator": "^1.0.7",
+    "sav-util": "^1.0.15",
+    "vue": "^2.2.4",
+    "vue-router": "^2.3.0",
+    "vue-server-renderer": "^2.2.4",
+    "vue-template-compiler": "^2.2.4"
   },
   "standard": {
     "parser": "babel-eslint",
@@ -72,14 +81,5 @@
       "transform-es2015-modules-commonjs"
     ]
   },
-  "homepage": "https://github.com/savjs/sav-vue#readme",
-  "dependencies": {
-    "bluebird": "^3.5.0",
-    "sav-decorator": "^1.0.7",
-    "sav-util": "^1.0.11",
-    "vue": "^2.2.4",
-    "vue-router": "^2.3.0",
-    "vue-server-renderer": "^2.2.4",
-    "vue-template-compiler": "^2.2.4"
-  }
+  "homepage": "https://github.com/savjs/sav-vue#readme"
 }

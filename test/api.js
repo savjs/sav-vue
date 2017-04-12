@@ -19,14 +19,14 @@ test('vue.mode.app', async (ava) => {
   class Test {
     @get()
     async basic (ctx) {
-      ctx.state = {
+      return {
         title: 'Basic Title'
       }
     }
 
     @get()
     async profile (ctx) {
-      ctx.state = {
+      return {
         title: 'Profile Title'
       }
     }
@@ -34,7 +34,7 @@ test('vue.mode.app', async (ava) => {
     @get()
     @vue(false)
     async single (ctx) {
-      ctx.state = {
+      return {
         title: 'Single vue'
       }
     }
@@ -51,7 +51,7 @@ test('vue.mode.app', async (ava) => {
       path: '/Test/basic',
       method: 'GET'
     }
-    await router.route()(ctx)
+    await router.exec(ctx)
     expect(!!~ctx.body.indexOf('TestBasic')).to.eql(true)
   }
   {
@@ -59,7 +59,7 @@ test('vue.mode.app', async (ava) => {
       path: '/Test/profile',
       method: 'GET'
     }
-    await router.route()(ctx)
+    await router.exec(ctx)
     expect(!!~ctx.body.indexOf('TestProfile')).to.eql(true)
   }
 })
@@ -74,7 +74,7 @@ test('vue.mode.module', async (ava) => {
   class Test {
     @get()
     async basic (ctx) {
-      ctx.state = {
+      return {
         title: 'Basic Title'
       }
     }
@@ -91,6 +91,6 @@ test('vue.mode.module', async (ava) => {
     path: '/Test/basic',
     method: 'GET'
   }
-  await router.route()(ctx)
+  await router.exec(ctx)
   expect(!!~ctx.body.indexOf('TestBasic')).to.eql(true)
 })

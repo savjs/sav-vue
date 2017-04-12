@@ -198,7 +198,7 @@ export function vuePlugin (ctx) {
       }
       vueRender.createRoute(action)
       action.set('vue', async (context) => {
-        await vueRender.render(context, context.state)
+        await vueRender.render(context, context.data)
       })
     }
   })
