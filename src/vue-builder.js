@@ -59,7 +59,9 @@ export function mergeConfig (opts) {
       babel({
         babelrc: false,
         exclude: 'node_modules/**',
-        'plugins': []
+        'plugins': [
+          ['transform-object-rest-spread']
+        ]
       }),
       resolve({
         jsnext: true,

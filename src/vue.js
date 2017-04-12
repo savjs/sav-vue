@@ -30,9 +30,12 @@ class VueRenderer {
       this.isCompiled = !this.props.vueLiveCompiled
     }
     try {
-      let {vm, router} = this.vueInstance
+      let {vm, router, flux} = this.vueInstance
       let path = ctx.path || ctx.originalUrl
       router.push(path)
+      if (flux) {
+        await flux.replaceState(typeof state === 'object' ? state : {})
+      }
       // console.log(router.getMatchedComponents())
       let text = await renderToStringAsync(vm)
       ctx.end(text)
