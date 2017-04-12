@@ -27,6 +27,7 @@ class VueRenderer {
   async render (ctx, state) {
     if (!this.isCompiled) {
       await this.compileImport()
+      this.isCompiled = !this.props.vueLiveCompiled
     }
     try {
       let {vm, router} = this.vueInstance
@@ -141,10 +142,12 @@ export function vuePlugin (ctx) {
   let vueEntry = ctx.config('vueEntry', 'server-entry.js')
   let vueCase = ctx.config('vueCase', 'pascal')
   let vueFileCase = ctx.config('vueFileCase', 'pascal')
+  let vueLiveCompiled = ctx.config('vueLiveCompiled', false)
   let vueOpts = {
     vueRoot,
     vueCase,
     vueEntry,
+    vueLiveCompiled,
     vueFileCase
   }
 
