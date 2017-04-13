@@ -30,15 +30,30 @@ class VueRenderer {
       this.isCompiled = !this.props.vueLiveCompiled
     }
     try {
-      let {vm, router, flux} = this.vueInstance
+      let {vm, router, flux, Vue} = this.vueInstance
       let path = ctx.path || ctx.originalUrl
       router.push(path)
       if (flux) {
         await flux.replaceState(typeof state === 'object' ? state : {})
       }
       // console.log(router.getMatchedComponents())
-      let text = await renderToStringAsync(vm)
-      ctx.end(text)
+      let vueHtml = await renderToStringAsync(vm)
+      // 编译layout文件
+      let vueLayout = this.props.vueLayout
+      if (vueLayout && Vue && flux) {
+        let Layout = await this.compileVueLayout()
+        let layoutVm = new Vue(Object.assign({}, Layout))
+        let layoutHtml = await renderToStringAsync(layoutVm)
+        let stateText = JSON.stringify(state)
+        let stateScript = `
+<script type="text/javascript">
+  window.INIT_STATE = ${stateText}
+</script>
+`
+        vueHtml = layoutHtml.replace('<vue-html></vue-html>', vueHtml)
+                  .replace('<vue-init-state></vue-init-state>', stateScript)
+      }
+      ctx.end(vueHtml)
     } catch (err) {
       this.isCompiled = false
       throw err
@@ -123,6 +138,10 @@ class VueRenderer {
     let entryFile = resolve(this.props.vueRoot, this.props.vueEntry)
     return compileImport(entryFile).then()
   }
+  compileVueLayout () {
+    let layoutFile = resolve(this.props.vueRoot, this.props.vueLayout)
+    return compileImport(layoutFile).then()
+  }
 }
 
 function syncFile (path, data) {
@@ -146,12 +165,14 @@ export function vuePlugin (ctx) {
   let vueCase = ctx.config('vueCase', 'pascal')
   let vueFileCase = ctx.config('vueFileCase', 'pascal')
   let vueLiveCompiled = ctx.config('vueLiveCompiled', false)
+  let vueLayout = ctx.config('vueLayout', 'Layout.vue')
   let vueOpts = {
     vueRoot,
     vueCase,
     vueEntry,
     vueLiveCompiled,
-    vueFileCase
+    vueFileCase,
+    vueLayout
   }
 
   let createRender = (opts) => {

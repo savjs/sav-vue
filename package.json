@@ -1,6 +1,6 @@
 {
   "name": "sav-vue",
-  "version": "1.0.4",
+  "version": "1.0.5",
   "description": "vueerty inject for savjs",
   "main": "dist/sav-vue.cjs.js",
   "module": "dist/sav-vue.es.js",
