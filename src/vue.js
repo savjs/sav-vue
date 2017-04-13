@@ -30,7 +30,7 @@ class VueRenderer {
       this.isCompiled = !this.props.vueLiveCompiled
     }
     try {
-      let {vm, router, flux, Vue} = this.vueInstance
+      let {vm, router, flux, Vue, vaf} = this.vueInstance
       let path = ctx.path || ctx.originalUrl
       router.push(path)
       if (flux) {
@@ -42,7 +42,7 @@ class VueRenderer {
       let vueLayout = this.props.vueLayout
       if (vueLayout && Vue && flux) {
         let Layout = await this.compileVueLayout()
-        let layoutVm = new Vue(Object.assign({}, Layout))
+        let layoutVm = new Vue(Object.assign({router, vaf}, Layout))
         let layoutHtml = await renderToStringAsync(layoutVm)
         let stateText = JSON.stringify(state)
         let stateScript = `
