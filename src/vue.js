@@ -1,4 +1,4 @@
-import {compileImport, renderer} from './vue-builder.js'
+import {compileImport, renderer, compile} from './vue-builder.js'
 import {quickConf} from 'sav-decorator'
 import {isObject, convertCase} from 'sav-util'
 
@@ -61,7 +61,7 @@ class VueRenderer {
   }
   async compileImport () {
     let factory = await this.compileVueInstance()
-    let routes = await this.compileVueRoute()
+    let routes = await this.compileVueApp()
     let ret = factory({routes})
     this.vueInstance = ret
   }
@@ -122,7 +122,7 @@ class VueRenderer {
         routeName = 'Routes.js'
         break
       case RENDER_MODE_MODULE:
-        routeName = comps[0].name + 'Routes.js'
+        routeName = comps[0].component.split('/').shift() + 'Routes.js'
         break
       case RENDER_MODE_ACTION:
         routeName = comps[0].children[0].name + 'Routes.js'
@@ -131,16 +131,32 @@ class VueRenderer {
     let routePath = resolve(this.props.vueRoot, routeName)
     return syncFile(routePath, content).then(() => routePath)
   }
-  compileVueRoute () {
-    return this.saveVueRouter().then(compileImport)
+  compileVueApp () {
+    let queues = [this.saveVueRouter()]
+    if (this.props.vueDest) {
+      queues.push(this.compileVueClient({dest: true}))
+    }
+    return Promise.all(queues).then(([vueRouter]) => {
+      return compileImport(vueRouter)
+    })
   }
   compileVueInstance () {
     let entryFile = resolve(this.props.vueRoot, this.props.vueEntry)
-    return compileImport(entryFile).then()
+    return compileImport(entryFile)
   }
   compileVueLayout () {
     let layoutFile = resolve(this.props.vueRoot, this.props.vueLayout)
-    return compileImport(layoutFile).then()
+    return compileImport(layoutFile)
+  }
+  compileVueClient (opts) {
+    let vueClientEntry = resolve(this.props.vueRoot, this.props.vueClientEntry)
+    opts = Object.assign({
+      IS_CLIENT: true
+    }, opts)
+    if (opts.dest === true) {
+      opts.dest = resolve(this.props.vueDest, this.props.vueClientEntry)
+    }
+    return compile(vueClientEntry, opts)
   }
 }
 
@@ -161,17 +177,21 @@ function syncFile (path, data) {
 
 export function vuePlugin (ctx) {
   let vueRoot = ctx.config('vueRoot', '')
+  let vueDest = ctx.config('vueDest', false)
   let vueEntry = ctx.config('vueEntry', 'server-entry.js')
+  let vueClientEntry = ctx.config('vueClientEntry', 'client-entry.js')
   let vueCase = ctx.config('vueCase', 'pascal')
   let vueFileCase = ctx.config('vueFileCase', 'pascal')
   let vueLiveCompiled = ctx.config('vueLiveCompiled', false)
   let vueLayout = ctx.config('vueLayout', 'Layout.vue')
   let vueOpts = {
     vueRoot,
+    vueDest,
     vueCase,
     vueEntry,
     vueLiveCompiled,
     vueFileCase,
+    vueClientEntry,
     vueLayout
   }
 
@@ -180,6 +200,19 @@ export function vuePlugin (ctx) {
   }
 
   let defaultRender
+
+  ctx.getVueRenders = () => {
+    let renders = []
+    for (let moduleId in ctx.modules) {
+      let module = ctx.modules[moduleId]
+      if (module.vueRender) {
+        if (!~renders.indexOf(module.vueRender)) {
+          renders.push(module.vueRender)
+        }
+      }
+    }
+    return renders
+  }
 
   ctx.use({
     module (module) {

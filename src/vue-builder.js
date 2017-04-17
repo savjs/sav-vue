@@ -71,19 +71,34 @@ export function mergeConfig (opts) {
       commonjs()
     ]
   }
+  if (opts.IS_CLIENT) {
+    delete opts.IS_CLIENT
+  } else {
+
+  }
   return Object.assign(config, opts)
 }
 
 export function compile (src, opts) {
-  let configs = mergeConfig(Object.assign({
+  opts = Object.assign({
     entry: src
-  }, opts))
+  }, opts)
+  let {IS_CLIENT} = opts
+  let configs = mergeConfig(opts)
   return rollup(configs).then((bundle) => {
-    let result = bundle.generate({
-      format: 'cjs'
-    })
-    let code = result.code.toString()
-    return code
+    let format = opts.format || (IS_CLIENT ? 'umd' : 'cjs')
+    if (opts.dest) {
+      return bundle.write({
+        format: format,
+        dest: opts.dest
+      })
+    } else {
+      let result = bundle.generate({
+        format: format
+      })
+      let code = result.code.toString()
+      return code
+    }
   })
 }
 

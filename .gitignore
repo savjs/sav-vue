@@ -39,3 +39,5 @@ jspm_packages
 /test/fixtures/TestRoutes.js
 /test/fixtures/Routes.js
 .vscode/
+test/fixtures/bundle.js
+test/fixtures/dist/client-entry.js
