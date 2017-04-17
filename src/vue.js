@@ -259,7 +259,7 @@ export function vuePlugin (ctx) {
       vueRender.createRoute(action)
       action.set('vue', async (context) => {
         if (context.accepts) {
-          if ('html' != context.accepts('image', 'json', 'html')) {
+          if ('html' !== context.accepts('image', 'json', 'html')) {
             return
           }
         }
