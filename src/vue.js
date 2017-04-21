@@ -16,6 +16,10 @@ const RENDER_MODE_APP = 1
 const RENDER_MODE_MODULE = 2
 const RENDER_MODE_ACTION = 3
 
+function unique (arr) {
+  return arr.filter((it, index) => arr.indexOf(it) === index)
+}
+
 class VueRenderer {
   constructor (props) {
     this.props = props
@@ -70,10 +74,12 @@ class VueRenderer {
     let {actionName, vueProp, route, module} = action
     let moduleName = module.moduleName
     let name = convertCase(vueCase, `${moduleName}_${actionName}`)
+    let component = convertCase(vueFileCase, `${moduleName}/${moduleName}_${actionName}`)
     let actionRoute = {
-      component: convertCase(vueFileCase, `${moduleName}/${moduleName}_${actionName}`),
+      component,
       path: route.relative,
-      name
+      name,
+      methods: route.methods
     }
     actionRoute = vueProp ? Object.assign({}, actionRoute, vueProp) : actionRoute
     let moduleRoute
@@ -102,11 +108,16 @@ class VueRenderer {
     }
     let routes = JSON.stringify(comps, null, 2)
     let components = []
+    let names = []
     routes = routes.replace(/"component":\s+"((\w+)\/(\w+))"/g, (_, path, dir, name) => {
       components.push(`import ${name} from './${path}.vue'`)
+      names.push(name)
       let ret = `"component": ${name}`
       return ret
     })
+    // 去重
+    components = unique(components)
+    unique(names).forEach((it) => components.push(`${it}.name='${it}'`))
     components.push(`export default ${routes}`)
     let content = components.join('\n')
     return {
@@ -241,15 +252,13 @@ export function vuePlugin (ctx) {
         if (vueProp === false) {
           return
         }
-        if (vueProp === true) {
-          vueRender = module.vueRender
-        } else if (isObject(vueProp)) {
+        vueRender = module.vueRender
+        if (isObject(vueProp)) {
           if (vueProp.instance) {
             vueRender = createRender(vueProp)
             vueRender.mode = RENDER_MODE_ACTION
-          } else {
-            action.vueProp = vueProp
           }
+          action.vueProp = vueProp
         }
       } else if (module.vueRender) {
         vueRender = module.vueRender
