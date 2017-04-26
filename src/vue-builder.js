@@ -38,6 +38,7 @@ export function mergeConfig (opts) {
   let config = {
     entry: 'src/server-entry.js',
     format: 'cjs',
+    sourceMap: true,
     external: [
       'vue',
       'vue-router',
@@ -90,6 +91,7 @@ export function compile (src, opts) {
     if (opts.dest) {
       return bundle.write({
         format: format,
+        sourceMap: configs.sourceMap,
         dest: opts.dest
       })
     } else {
