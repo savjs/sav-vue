@@ -1,25 +1,45 @@
 import babel from 'rollup-plugin-babel'
+import resolve from 'rollup-plugin-node-resolve'
+import commonjs from 'rollup-plugin-commonjs'
+import json from 'rollup-plugin-json'
 
 export default {
-  entry: 'src/index.js',
-  targets: [
-    { dest: 'dist/sav-vue.cjs.js', format: 'cjs' },
-    { dest: 'dist/sav-vue.es.js', format: 'es' }
+  input: 'src/index.js',
+  output: [
+    { file: 'dist/sav-vue.js', format: 'cjs'},
+  ],
+  external: [
+    'sav-util',
+    'sav-router',
+    'sav-schema',
   ],
   plugins: [
+    json({
+      preferConst: false // Default: false
+    }),
+    resolve({
+      "jsnext:main": false,
+      module: false,
+      main: true
+    }),
     babel({
       babelrc: false,
       externalHelpers: false,
-      exclude: 'node_modules/**',
-      'plugins': [
+      // exclude: ['node_modules/**'],
+      exclude: [],
+      include: ['node_modules/**'],
+      plugins: [
+        'transform-decorators-legacy',
         ['transform-object-rest-spread', { 'useBuiltIns': true }]
       ]
-    })
+    }),
+    commonjs({})
   ],
   onwarn (err) {
     if (err) {
       if (err.code !== 'UNRESOLVED_IMPORT') {
         console.log(err.code, err.message)
+        console.dir(err)
       }
     }
   }
