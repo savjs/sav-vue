@@ -1,27 +1,12 @@
 import {isString, isObject, isArray, isFunction, clone} from 'sav-util'
 
-export class VuePayload {
-  constructor (opts) {
-    this.opts = {
-      deepth: 2,
-      Vue: null,
-      router: null
-    }
-    this.processComponent = processComponent.bind(this)
-    Object.assign(this.opts, opts)
-  }
-  setOptions (opts) {
-    Object.assign(this.opts, opts)
-  }
-  getPayloads (route) {
-    let {router, Vue} = this.opts
-    let components = router.getMatchedComponents(route)
-    let arr = []
-    getComponentsDepth(Vue, components, this.opts.deepth, arr)
-    let payloads = []
-    arr.reduce(this.processComponent, payloads)
-    return resolvePayloads(route, payloads)
-  }
+export function getPayloads (route, {Vue, router, deepth}) {
+  let components = router.getMatchedComponents(route)
+  let arr = []
+  getComponentsDepth(Vue, components, deepth, arr)
+  let payloads = []
+  arr.reduce(processComponent, payloads)
+  return resolvePayloads(route, payloads)  
 }
 
 function resolvePayloads (vueRoute, payloads) {
@@ -29,16 +14,16 @@ function resolvePayloads (vueRoute, payloads) {
     if (isFunction(payload)) {
       payload = payload(vueRoute)
     }
-    if (isObject(payload)) {
+    if (isObject(payload)) { // 单个
       routes.push(payload)
-    } else if (isArray(payload)) {
+    } else if (isArray(payload)) { // 多个
       return routes.concat(payload.map(it => {
-        if (isString(it)) {
-          return {name: it}
+        if (isString(it)) { // 简单字符串
+          it = {name: it}
         }
         return it
-      }))
-    } else if (isString(payload)) {
+      }.filter(it => isObject(it))))
+    } else if (isString(payload)) { // 简单字符串
       routes.push({name: payload})
     }
     return routes

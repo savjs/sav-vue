@@ -1,71 +1,61 @@
-import { bindEvent, isObject, isString } from 'sav-util'
-import { VuePayload } from './VuePayload.js'
+import { bindEvent, isObject, isString, testAssign } from 'sav-util'
+import { getPayloads } from './payload.js'
 
-export const EVENT_START_PAYLOADS = 'start-process-payloads'
-export const EVENT_RESOLVE_PAYLOADS = 'resolve-payloads'
-export const EVENT_FINISH_PAYLOADS = 'finish-process-payloads'
-export const EVENT_ERROR_PAYLOADS = 'error-process-payloads'
+import {
+  PAYLOAD_START,
+  PAYLOAD_PROGRESS,
+  PAYLOAD_RESOLVE,
+  PAYLOAD_REJECT,
+} from './events.js'
 
-export class SavVue extends VuePayload {
-  constructor (opts) {
-    super(Object.assign({
+const defaultProject = 'default'
+
+export class SavVue {
+  constructor (opts = {}) {
+    this.opts = testAssign(opts, {
       fallback: null, // 请求失败后处理回调
       flux: null,
-      sav: null,
+      contract: null,
+      Vue: null,
+      router: null,
       cacheField: true,
       cacheEnum: true
-    }, opts))
-    this.savs = {}
-    this.caches = {}
-    if (this.opts.sav) {
-      this.setSav(this.opts.sav)
-    }
-    bindEvent(this)
-    this.opts.router.beforeEach(this.beforeEach.bind(this))
-    this.installVue(opts.Vue)
-    this.initFlux(opts.flux)
-  }
-
-  setSav (sav) {
-    sav.inject(this.opts.flux)
-    this.savs[sav.name] = sav
-  }
-
-  initFlux (flux) {
-    let self = this
-    flux.declare({
-      actions: {
-        RemoveCache (flux, key) {
-          let [savName, cacheKey] = key.split('.')
-          if (!cacheKey) {
-            cacheKey = savName
-            savName = 'sav'
-          }
-          self.savs[savName].removeCache(cacheKey)
-        }
-      }
     })
+    bindEvent(this)
+    this.contracts = {}
+    this.caches = {}
+    if (this.opts.contract) {
+      this.setContract(this.opts.contract, defaultProject)
+    }
+    this.opts.router.beforeEach(this.beforeEach.bind(this))
+    this.installVue(this.opts.Vue)
   }
-
+  setContract (contract, name) {
+    let isDefault = name === defaultProject
+    contract.injectFlux(this.opts.flux, isDefault)
+    if (name) {
+      this.contracts[name] = contract
+    }
+    this.contracts[contract.projectName] = contract
+  }
   installVue (Vue) {
     // {{ 'ResAccountLogin.username' | field }}
-    Vue.filter('field', (value, ns) => {
-      ns || (ns = 'sav')
+    Vue.filter('field', (value, project = defaultProject) => {
       let caches = this.caches
       if (this.opts.cacheField) {
         if (caches[value]) {
           return caches[value]
         }
       }
-      let sav = this.savs[ns]
+      let sav = this.contracts[project]
       let [structName, fieldName] = value.split('.')
       let ret
       try {
         let struct = sav.schema.getSchema(structName)
         let field = struct.opts.props[fieldName]
-        ret = field.text || `${ns}.${value}`
+        ret = field.text || `${project}.${value}`
       } catch (err) {
-        ret = `${ns}.${value}`
+        ret = `${project}.${value}`
       } finally {
         if (this.opts.cacheField) {
           caches[value] = ret
@@ -75,21 +65,20 @@ export class SavVue extends VuePayload {
     })
     // {{'GroupRoleEnum.master' | enumText }}
     // {{ 'master' | enumText('GroupRoleEnum') }}
-    Vue.filter('enumText', (value, enumName, ns) => {
-      ns || (ns = 'sav')
+    Vue.filter('enumText', (value, enumName, project = defaultProject) => {
       if (!enumName) {
         let arr = value.split('.')
         value = arr[1]
         enumName = arr[0]
       }
-      let uri = `${ns}.${enumName}.${value}`
+      let uri = `${project}.${enumName}.${value}`
       let caches = this.caches
       if (this.opts.cacheEnum) {
         if (caches[uri]) {
           return caches[uri]
         }
       }
-      let sav = this.savs[ns]
+      let sav = this.contracts[project]
       let ret
       try {
         let schemaEnum = sav.schema.getSchema(enumName)
@@ -117,19 +106,19 @@ export class SavVue extends VuePayload {
   }
 
   beforeEach (to, from, next) {
-    let payloads = this.getPayloads(to)
+    let payloads = getPayloads(to, this.opts)
 
     if (payloads.length) {
       let {flux, fallback} = this.opts
 
-      this.emit(EVENT_START_PAYLOADS, {
+      this.emit(PAYLOAD_START, {
         id: to.fullPath,
         payloads: payloads.length,
         $route: to
       })
 
       this.invokePayloads(to, payloads).then((newState) => {
-        this.emit(EVENT_FINISH_PAYLOADS, {
+        this.emit(PAYLOAD_RESOLVE, {
           id: to.fullPath,
           $route: to
         })
@@ -144,7 +133,7 @@ export class SavVue extends VuePayload {
         }
         next()
       }).catch(err => {
-        this.emit(EVENT_ERROR_PAYLOADS, err)
+        this.emit(PAYLOAD_REJECT, err)
         if (fallback) {
           return fallback(to, from, next, err)
         } else {
@@ -152,8 +141,6 @@ export class SavVue extends VuePayload {
         }
       })
       return
-    } else {
-      this.emit(EVENT_START_PAYLOADS, null)
     }
     if (to.meta.title) {
       document.title = to.meta.title
@@ -164,17 +151,18 @@ export class SavVue extends VuePayload {
   invokePayloads (vueRoute, payloads) {
     let states = []
     let routes = payloads.filter((it) => {
-      if (isObject(it)) {
-        let sav = this.savs[it.sav || 'sav']
-        if (sav) {
-          if (sav.resolvePayload(it, vueRoute)) {
-            if (it.state) {
-              states.push(it.state)
-            } else {
-              return true
-            }
+      let projectName = it.project || defaultProject
+      let project = this.contracts[projectName]
+      if (project) {
+        if (project.resolvePayload(it, vueRoute)) {
+          if (it.state) {
+            states.push(it.state)
+          } else {
+            return true
           }
         }
+      } else {
+        throw new Error('project no found: ', projectName)
       }
     })
 
@@ -183,13 +171,13 @@ export class SavVue extends VuePayload {
       remains: routes.length
     }
 
-    const _decr = function decreasePayloadsRemains () {
+    const _decr = () => {
       e.remains = (!e.remains || --e.remains) < 0 ? 0 : e.remains
-      this.emit(EVENT_RESOLVE_PAYLOADS, e)
+      this.emit(PAYLOAD_PROGRESS, e)
     }
 
     return Promise.all(routes.map((route) => {
-      const p = route.savHandle.invokePayload(route)
+      const p = route.contract.invokePayload(route)
       p.then(_decr.bind(this), _decr.bind(this))
       return p
     })).then((args) => {

@@ -1,19 +1,20 @@
-import {ajax, bindEvent, compose} from 'sav-util'
+import {ajax, bindEvent, compose, testAssign} from 'sav-util'
+
+import {
+  REQUEST,
+  RESPONSE,
+} from './events.js'
 
 export class Request {
-  constructor (sav) {
-    this.opts = {
+  constructor (opts = {}) {
+    this.opts = testAssign(opts, {
       baseUrl: '/',
       stripHeaders: true, // 不返回头部信息
       ajax
-    }
-    sav.shareOptions(this)
+    })
     this.invokeQueues = [this.invoke.bind(this)]
     this.invoker = null
     bindEvent(this)
-  }
-  setOptions (opts) {
-    assign(this.opts, opts)
   }
   before (fn) {
     this.invoker = null
@@ -48,7 +49,7 @@ export class Request {
   }
   invoke (ctx, next) {
     return new Promise((resolve, reject) => {
-      ctx.xhr = ajax(ctx.request, (err, data, headers) => {
+      ctx.xhr = this.opts.ajax(ctx.request, (err, data, headers) => {
         if (err) {
           return reject(err)
         }
@@ -57,13 +58,13 @@ export class Request {
             data,
             headers
           }
-          this.emit('response', ctx)
+          this.emit(RESPONSE, ctx)
         } catch (err) {
           return reject(err)
         }
         resolve()
       })
-      this.emit('request', ctx)
+      this.emit(REQUEST, ctx)
     }).then(next)
   }
 }
